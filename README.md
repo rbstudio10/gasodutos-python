@@ -44,4 +44,4 @@ python test_consistencia.py
 
 ## Licença
 
-Defina a licença antes de publicar (ex.: MIT).
+MIT. Veja o arquivo LICENSE.
