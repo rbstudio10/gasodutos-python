@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-gas_flow_rate.py - Calculo de Vazao para Gasodutos (Escoamento Compressivel)
+gas_flow_rate.py - Gas pipeline standard flow rate (compressible flow)
 
-Autor: Antonio Ricardo Andrade Bozolla (revisao R1 - 21/07/26)
-Base teorica: Stuckenbruck, S. - Escoamento em Dutos, Volume B (PUC-Rio, 2014)
-Traducao de HP PPL (GasFlowRate) para Python 3.
+Author: Antonio Ricardo Andrade Bozolla (revision R1 - 21/07/26)
+Theoretical basis: Stuckenbruck, S. - Escoamento em Dutos (Pipe Flow), Volume B
+(PUC-Rio, 2014)
+Translation of the HP PPL program GasFlowRate to Python 3.
 
-Entradas (mesmas unidades do programa PPL):
-    L9   comprimento [km]            D    diametro interno [m]
-    eps  rugosidade absoluta [mm]    lam  densidade relativa ao ar [-]
-    mu   viscosidade dinamica [Pa.s] k    coef. isentropico [-]
-    P19  pressao de entrada [bar abs]  P29 pressao de saida [bar abs]
-    Zm   fator de compressibilidade medio [-]
-    Tm9  temperatura media [degC]    n    eficiencia do duto [-]
-    Ca   coeficiente do AGA-A [-]    h    desnivel [m]
+Inputs (same units as the PPL program):
+    L9   length [km]                 D    inside diameter [m]
+    eps  absolute roughness [mm]     lam  gas relative density (air = 1) [-]
+    mu   dynamic viscosity [Pa.s]    k    isentropic coefficient [-]
+    P19  inlet pressure [bar abs]    P29  outlet pressure [bar abs]
+    Zm   average compressibility factor [-]
+    Tm9  average temperature [degC]  n    pipe efficiency [-]
+    Ca   AGA-A coefficient [-]       h    elevation difference [m]
 
-AGA-B: com D dado, C2 = 2*log10(3.7*D/eps) e explicito (passe unico).
+AGA-B: with D given, C2 = 2*log10(3.7*D/eps) is explicit (single pass).
 """
 import math
 from gasutil import *
@@ -38,7 +39,7 @@ def gas_flow_rate(L9, D, eps, lam, mu, k, P19, P29, Zm, Tm9, n, Ca, h,
     verificar_rugosidade(eps, D, avisos, estrito)
     res = {}
 
-    # ---------------- TEORICO (laco de convergencia em f) ----------------
+    # ---------------- THEORETICAL (convergence loop on f) ----------------
     f3, err, it = 0.02, 1.0, 0
     while err > TOL and it < MAXIT:
         C2 = 1.0 / math.sqrt(f3)
@@ -55,7 +56,7 @@ def gas_flow_rate(L9, D, eps, lam, mu, k, P19, P29, Zm, Tm9, n, Ca, h,
     res["THEORIC"] = dict(f=f3, Re=R3, Ma=mach(V2b, k, b.Rg, Tm), V=V2b,
                           Q=Q2, f_sci=True)
 
-    # ---------------- MODELOS EMPIRICOS ----------------
+    # ---------------- EMPIRICAL MODELS ----------------
     for nome, C, a, bb, c in MODELOS_EMPIRICOS:
         Q = vazao_empirica(C, a, bb, c, n, b, lam, Zm, D)
         V = velocidade(Q, D, P2, Zm, Tm)
@@ -64,7 +65,7 @@ def gas_flow_rate(L9, D, eps, lam, mu, k, P19, P29, Zm, Tm9, n, Ca, h,
         res[nome] = dict(f=1.0, Re=R, Ma=mach(V, k, b.Rg, Tm), V=V, Q=Q,
                          f_sci=False)
 
-    # ---------------- AGA-A (laco de convergencia em f) ----------------
+    # ---------------- AGA-A (convergence loop on f) ----------------
     fa, Ra1, err, it = f3, R3, 1.0, 0
     while err > TOL and it < MAXIT:
         C2d = 2 * Ca * math.log10((Ra1 * math.sqrt(fa)) / 2.51)
@@ -81,14 +82,14 @@ def gas_flow_rate(L9, D, eps, lam, mu, k, P19, P29, Zm, Tm9, n, Ca, h,
     res["AGA-A"] = dict(f=fa, Re=Ra1, Ma=mach(Va1, k, b.Rg, Tm), V=Va1,
                         Q=Qa1, f_sci=True)
 
-    # ---------------- AGA-B (passe unico) ----------------
+    # ---------------- AGA-B (single pass) ----------------
     exigir(eps > 0, "AGA-B requires absolute roughness > 0_mm")
     C2e = 2 * math.log10(3.7 * D / (eps * 1e-3))
     Qb = C1_AGA * C2e * n * (T_STD / P_STD) * b.ker * D ** 2.5
     Vb = velocidade(Qb, D, P2, Zm, Tm)
     Rb = reynolds(Qb, D, b.rho_s, mu)
     verificar_reynolds(Rb, avisos, estrito)
-    fb = colebrook(0.02, eps, D, Rb)   # apenas para exibicao
+    fb = colebrook(0.02, eps, D, Rb)   # for display only
     res["AGA-B"] = dict(f=fb, Re=Rb, Ma=mach(Vb, k, b.Rg, Tm), V=Vb, Q=Qb,
                         f_sci=True)
 
@@ -109,11 +110,11 @@ def formatar(r):
 
 
 if __name__ == "__main__":
-    # Exemplo: edite os valores abaixo e execute.
+    # Example: edit the values below and run.
     try:
-        r = gas_flow_rate(L9=14, D=0.15, eps=0.020, lam=0.72, mu=1.03e-5,
-                          k=1.46, P19=9.2, P29=6, Zm=0.985, Tm9=20.5, n=1,
-                          Ca=0.97, h=910)
+        r = gas_flow_rate(L9=100, D=0.5, eps=0.046, lam=0.6, mu=1.1e-5,
+                          k=1.3, P19=70, P29=40, Zm=0.9, Tm9=25, n=0.92,
+                          Ca=0.95, h=0)
         print(formatar(r))
     except GasPipelineError as e:
-        print("ERRO DE ENTRADA:", e)
+        print("INPUT ERROR:", e)

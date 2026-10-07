@@ -1,30 +1,31 @@
 # -*- coding: utf-8 -*-
 """
-gasutil.py - Constantes e funções comuns aos programas de gasodutos.
+gasutil.py - Constants and helper functions shared by the gas pipeline programs.
 
-Autor original (HP PPL): Antonio Ricardo Andrade Bozolla
-Base teórica: Stuckenbruck, S. - Escoamento em Dutos, Volume B (PUC-Rio, 2014).
-Tradução HP PPL -> Python 3 (somente biblioteca padrão: math).
+Original author (HP PPL): Antonio Ricardo Andrade Bozolla
+Theoretical basis: Stuckenbruck, S. - Escoamento em Dutos (Pipe Flow), Volume B
+(PUC-Rio, 2014).
+HP PPL -> Python 3 translation (standard library only: math).
 """
 import math
 
 # ----------------------------------------------------------------------
-# Constantes (cf. Tabela 8.3)
+# Constants (cf. Table 8.3)
 # ----------------------------------------------------------------------
 G = 9.806            # m/s2
 R_AR = 287.0         # J/(kg.K)
 P_STD = 101325.0     # Pa
 T_STD = 293.15       # K
 Z_STD = 1.0
-RHO_AR_STD = 1.2043  # kg/m3 (ar nas condições std)
+RHO_AR_STD = 1.2043  # kg/m3 (air at standard conditions)
 C1_TEORICO = 13.305
 C1_AGA = 13.303
-TOL = 1e-6           # tolerância relativa em f (laço de ponto fixo)
-MAXIT = 30           # máximo de iterações do laço de ponto fixo
-N_COLEBROOK = 10     # iterações de ITERATE(...) do PPL
+TOL = 1e-6           # relative tolerance on f (fixed-point loop)
+MAXIT = 30           # maximum iterations of the fixed-point loop
+N_COLEBROOK = 10     # ITERATE(...) iterations of the PPL
 
-# Modelos empíricos: (nome, C, expoente de lambda, expoente do radicando,
-#                     expoente de D)
+# Empirical models: (name, C, exponent of lambda, exponent of the radicand,
+#                    exponent of D)
 #   Q = C * n * (T_std/P_std) * [(P1^2-P2^2-Grav)/(lam^a * L * Zm * Tm)]^b * D^c
 MODELOS_EMPIRICOS = (
     ("WEYMOUTH",    137.32, 1.0,    0.5,    2.6667),
@@ -37,7 +38,7 @@ MODELOS_EMPIRICOS = (
 
 
 class GasPipelineError(ValueError):
-    """Equivale a PRINT(mensagem) + BREAK do código PPL."""
+    """Equivalent to PRINT(message) + BREAK in the PPL code."""
 
 
 def exigir(condicao_ok, mensagem):
@@ -46,15 +47,15 @@ def exigir(condicao_ok, mensagem):
 
 
 def emitir(avisos, estrito, *linhas):
-    """Aviso de diagnóstico. estrito=True interrompe (como o BREAK do PPL);
-    estrito=False apenas registra e segue o cálculo."""
+    """Diagnostic warning. estrito=True aborts (like the PPL BREAK);
+    estrito=False only records the warning and carries on."""
     if estrito:
         raise GasPipelineError("\n".join(linhas))
     avisos.extend(linhas)
 
 
 # ----------------------------------------------------------------------
-# Validação das entradas comuns (SI: L em m, P em Pa, Tm em K)
+# Validation of the common inputs (SI: L in m, P in Pa, Tm in K)
 # ----------------------------------------------------------------------
 def validar_comuns(L, eps, lam, mu, k, P1, P2, Zm, Tm, n, Ca, h):
     exigir(L >= 10e3, "The length of the duct must be >= 10_km")
@@ -69,7 +70,7 @@ def validar_comuns(L, eps, lam, mu, k, P1, P2, Zm, Tm, n, Ca, h):
     exigir(k <= 1.8, "The isentropic coeff. must be <= 1.8")
     exigir(P1 <= 20.9e6, "P1 must be <= 20.9_MPa")
     exigir(P1 >= 0.5e6, "P1 must be >= 0.5_MPa")
-    exigir(P2 < P1, "P2 must be < P1")   # PPL testava P2>P1 (P2=P1 daria KER=0)
+    exigir(P2 < P1, "P2 must be < P1")   # the PPL tested P2>P1 (P2=P1 would give KER=0)
     exigir(P2 > 0, "P2 must be > 0_MPa")
     exigir(Zm >= 0.7, "The coeff. compressibility must be >= 0.7")
     exigir(Zm < 1, "The coeff. compressibility must be < 1")
@@ -84,7 +85,7 @@ def validar_comuns(L, eps, lam, mu, k, P1, P2, Zm, Tm, n, Ca, h):
 
 
 # ----------------------------------------------------------------------
-# Grandezas de base (Rg, rho_std, Grav, KER)
+# Base quantities (Rg, rho_std, Grav, KER)
 # ----------------------------------------------------------------------
 class Base:
     pass
@@ -104,7 +105,7 @@ def estado_base(L, P1, P2, Tm, lam, Zm, h):
 
 
 # ----------------------------------------------------------------------
-# Hidráulica
+# Hydraulics
 # ----------------------------------------------------------------------
 def colebrook(f0, eps_mm, D, Re, n=N_COLEBROOK):
     """ITERATE(1/(-2 log10(eps/(3.7D) + 2.51/(Re sqrt(f))))^2, f, f0, n)."""
@@ -120,7 +121,7 @@ def reynolds(Q, D, rho_s, mu):
 
 
 def velocidade(Q, D, P2, Zm, Tm):
-    """Velocidade in situ na saída (P2)."""
+    """In-situ velocity at the outlet (P2)."""
     return (Zm * Tm / P2) * (P_STD / (Z_STD * T_STD)) * (Q / (math.pi * D ** 2 / 4))
 
 
@@ -144,7 +145,7 @@ def diametro_empirico(C, a, b, c, n, base, lam, Zm, Q):
 
 
 # ----------------------------------------------------------------------
-# Diagnósticos (mensagens idênticas às do PPL)
+# Diagnostics (messages identical to the PPL ones)
 # ----------------------------------------------------------------------
 def verificar_reynolds(Re, avisos, estrito):
     if Re < 30e3:
@@ -162,7 +163,7 @@ def verificar_rugosidade(eps_mm, D, avisos, estrito):
 
 
 # ----------------------------------------------------------------------
-# Formatação da saída
+# Output formatting
 # ----------------------------------------------------------------------
 def formatar_bloco(i, nome, r, linha_final):
     f = f"{r['f']:.4e}" if r["f_sci"] else f"{r['f']:.0f}"

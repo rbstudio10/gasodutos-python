@@ -1,32 +1,33 @@
 # -*- coding: utf-8 -*-
 """
-gas_pipe_loop.py - Escoamento Compressivel em Gasoduto com Loop
+gas_pipe_loop.py - Compressible flow in a looped gas pipeline
 
-Autor: Antonio Ricardo Andrade Bozolla (versao aprimorada 14/03/26)
-Base teorica: Stuckenbruck, S. - Escoamento em Dutos, Volume B (PUC-Rio, 2014)
-Traducao de HP PPL (GasPipeLoop) para Python 3.
+Author: Antonio Ricardo Andrade Bozolla (improved version 14/03/26)
+Theoretical basis: Stuckenbruck, S. - Escoamento em Dutos (Pipe Flow), Volume B
+(PUC-Rio, 2014)
+Translation of the HP PPL program GasPipeLoop to Python 3.
 
-Topologia: A --(1)--> B --(2: B-C-E)--+--> E --(4)--> F
+Topology: A --(1)--> B --(2: B-C-E)--+--> E --(4)--> F
                                   \\--(3: B-D-E)--/
 
-Entradas (mesmas unidades do programa PPL):
-    P1        pressao em A [bar abs]       lam   densidade relativa [-]
-    L1..L4    comprimentos [km]            D1..D4 diametros internos [in]
-    Zm        compressibilidade media [-]  Tm    temperatura media [K]  (!)
-    f         fator de atrito de Darcy [-] n     eficiencia do duto [-]
-    Q         vazao std total [Nm3/s]
-    Za,Zb,Ze,Zf  altitudes dos pontos A, B, E, F [m]
-    n_iter    iteracoes do ponto fixo de pressao (ITERATE do PPL = 10)
+Inputs (same units as the PPL program):
+    P1        pressure at A [bar abs]      lam   gas relative density [-]
+    L1..L4    lengths [km]                 D1..D4 inside diameters [in]
+    Zm        avg. compressibility [-]     Tm    avg. temperature [K]  (!)
+    f         Darcy friction factor [-]    n     pipe efficiency [-]
+    Q         total standard flow rate [Nm3/s]
+    Za,Zb,Ze,Zf  elevations of points A, B, E, F [m]
+    n_iter    pressure fixed-point iterations (PPL ITERATE = 10)
 
-Atencao: aqui Tm e dado em kelvin (como no PPL), diferente de
-gas_diameter/gas_flow_rate, que recebem graus Celsius.
+Note: here Tm is given in kelvin (as in the PPL), unlike
+gas_diameter/gas_flow_rate, which take degrees Celsius.
 """
 import math
 from gasutil import *
 
 C1 = 13.305
-EXP_C = 2.5      # expoente de D
-EXP_B = 0.5      # expoente de Q
+EXP_C = 2.5      # exponent of D
+EXP_B = 0.5      # exponent of Q
 
 
 def _pm(pa, pb):
@@ -35,7 +36,7 @@ def _pm(pa, pb):
 
 def gas_pipe_loop(P1, lam, L1, L2, L3, L4, D1, D2, D3, D4, Zm, Tm, f, n, Q,
                   Za=749.0, Zb=1017.0, Ze=1095.0, Zf=1172.0, n_iter=10):
-    # ---------------- clausulas iniciais ----------------
+    # ---------------- initial checks ----------------
     exigir(P1 >= 10, "P1 must be >= 10 bar")
     exigir(P1 <= 200, "P1 must be <= 200 bar")
     exigir(lam > 0.3, "lambda must be > 0.3")
@@ -64,7 +65,7 @@ def gas_pipe_loop(P1, lam, L1, L2, L3, L4, D1, D2, D3, D4, Zm, Tm, f, n, Q,
     exigir(Tm >= 243.15, "The avg temperature should be >= 243.15 K")
     exigir(Tm <= 393.15, "The avg temperature should be <= 393.15 K")
 
-    # ---------------- conversoes ----------------
+    # ---------------- unit conversions ----------------
     p1 = P1 * 1e5
     l1, l2, l3, l4 = (x * 1e3 for x in (L1, L2, L3, L4))
     d1, d2, d3, d4 = (x * 0.0254 for x in (D1, D2, D3, D4))
@@ -99,18 +100,18 @@ def gas_pipe_loop(P1, lam, L1, L2, L3, L4, D1, D2, D3, D4, Zm, Tm, f, n, Q,
     p3 = resolver(p2, KT, Zb, Ze)       # ponto E
     p4 = resolver(p3, Kt_ef, Ze, Zf)    # ponto F
 
-    # ---------------- vazoes nos ramos do loop ----------------
+    # ---------------- flow rates in the loop branches ----------------
     grav_c = (2 * lam * G * (Ze - Zb) / (R_AR * Zm * Tm)) * _pm(p2, p3) ** 2
     Q_bce = math.sqrt((p2 ** 2 - p3 ** 2 - grav_c) / Kt_bce)
     Q_bde = Q - Q_bce
 
-    # ---------------- velocidades in situ e de erosao ----------------
+    # ---------------- in-situ and erosion velocities ----------------
     V_b = velocidade(Q, d1, p2, Zm, Tm)
     V_bce = velocidade(Q_bce, d2, p3, Zm, Tm)
     V_bde = velocidade(Q_bde, d3, p3, Zm, Tm)
     V_f = velocidade(Q, d4, p4, Zm, Tm)
     Vers_b = velocidade_erosao(p2, Zm, Rg, Tm)
-    Vers_e = velocidade_erosao(p3, Zm, Rg, Tm)   # vale p/ bce e bde (mesmo P3)
+    Vers_e = velocidade_erosao(p3, Zm, Rg, Tm)   # valid for bce and bde (same P3)
     Vers_f = velocidade_erosao(p4, Zm, Rg, Tm)
 
     Q_bde_alt = math.sqrt(max(p2 ** 2 - p3 ** 2 - grav_c, 0.0) / Kt_bde)
@@ -149,12 +150,12 @@ def formatar(r):
 
 
 if __name__ == "__main__":
-    # Exemplo: edite os valores abaixo e execute.
+    # Example: edit the values below and run.
     try:
-        r = gas_pipe_loop(P1=83, lam=0.62, L1=56, L2=71, L3=71, L4=89,
-                          D1=14, D2=10, D3=12, D4=12, Zm=0.91, Tm=299.15,
-                          f=0.011, n=0.95, Q=25.4629,
+        r = gas_pipe_loop(P1=90, lam=0.6, L1=30, L2=25, L3=25, L4=20,
+                          D1=20, D2=12, D3=12, D4=20, Zm=0.9, Tm=298.15,
+                          f=0.012, n=0.92, Q=15.0,
                           Za=749, Zb=1017, Ze=1095, Zf=1172)
         print(formatar(r))
     except GasPipelineError as e:
-        print("ERRO DE ENTRADA:", e)
+        print("INPUT ERROR:", e)

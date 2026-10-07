@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-gas_diameter.py - Calculo de Diametro para Gasodutos (Escoamento Compressivel)
+gas_diameter.py - Gas pipeline diameter (compressible flow)
 
-Autor: Antonio Ricardo Andrade Bozolla (revisao R1 - 21/07/26)
-Base teorica: Stuckenbruck, S. - Escoamento em Dutos, Volume B (PUC-Rio, 2014)
-Traducao de HP PPL (GasDiameter) para Python 3.
+Author: Antonio Ricardo Andrade Bozolla (revision R1 - 21/07/26)
+Theoretical basis: Stuckenbruck, S. - Escoamento em Dutos (Pipe Flow), Volume B
+(PUC-Rio, 2014)
+Translation of the HP PPL program GasDiameter to Python 3.
 
-Modelos: Teorico (Colebrook), Weymouth, Panhandle A/B, IGT, Mueller,
+Models: Theoretical (Colebrook), Weymouth, Panhandle A/B, IGT, Mueller,
 Fritzsche, AGA-A e AGA-B.
 
-Entradas (mesmas unidades do programa PPL):
-    L9   comprimento [km]            Q9   vazao std [Nm3/d]
-    eps  rugosidade absoluta [mm]    lam  densidade relativa ao ar [-]
-    mu   viscosidade dinamica [Pa.s] k    coef. isentropico [-]
-    P19  pressao de entrada [bar abs]  P29 pressao de saida [bar abs]
-    Zm   fator de compressibilidade medio [-]
-    Tm9  temperatura media [degC]    n    eficiencia do duto [-]
-    Ca   coeficiente do AGA-A [-]    h    desnivel [m]
+Inputs (same units as the PPL program):
+    L9   length [km]                 Q9   standard flow rate [Nm3/d]
+    eps  absolute roughness [mm]     lam  gas relative density (air = 1) [-]
+    mu   dynamic viscosity [Pa.s]    k    isentropic coefficient [-]
+    P19  inlet pressure [bar abs]    P29  outlet pressure [bar abs]
+    Zm   average compressibility factor [-]
+    Tm9  average temperature [degC]  n    pipe efficiency [-]
+    Ca   AGA-A coefficient [-]       h    elevation difference [m]
 """
 import math
 from gasutil import *
@@ -38,7 +39,7 @@ def gas_diameter(L9, Q9, eps, lam, mu, k, P19, P29, Zm, Tm9, n, Ca, h,
     b = estado_base(L, P1, P2, Tm, lam, Zm, h)
     res = {}
 
-    # ---------------- TEORICO (laco de convergencia em f) ----------------
+    # ---------------- THEORETICAL (convergence loop on f) ----------------
     f2, err, it = 0.02, 1.0, 0
     while err > TOL and it < MAXIT:
         C2 = 1.0 / math.sqrt(f2)
@@ -60,7 +61,7 @@ def gas_diameter(L9, Q9, eps, lam, mu, k, P19, P29, Zm, Tm9, n, Ca, h,
     res["THEORIC"] = dict(f=f2, Re=R2, Ma=mach(V2b, k, b.Rg, Tm), V=V2b,
                           D=Db, f_sci=True)
 
-    # ---------------- MODELOS EMPIRICOS ----------------
+    # ---------------- EMPIRICAL MODELS ----------------
     for nome, C, a, bb, c in MODELOS_EMPIRICOS:
         D = diametro_empirico(C, a, bb, c, n, b, lam, Zm, Q)
         V = velocidade(Q, D, P2, Zm, Tm)
@@ -69,7 +70,7 @@ def gas_diameter(L9, Q9, eps, lam, mu, k, P19, P29, Zm, Tm9, n, Ca, h,
         res[nome] = dict(f=1.0, Re=R, Ma=mach(V, k, b.Rg, Tm), V=V, D=D,
                          f_sci=False)
 
-    # ---------------- AGA-A (laco de convergencia em f) ----------------
+    # ---------------- AGA-A (convergence loop on f) ----------------
     f10a, Ra1, err, it = f2, R2, 1.0, 0
     while err > TOL and it < MAXIT:
         C2d = 2 * Ca * math.log10((Ra1 * math.sqrt(f10a)) / 2.51)
@@ -86,7 +87,7 @@ def gas_diameter(L9, Q9, eps, lam, mu, k, P19, P29, Zm, Tm9, n, Ca, h,
     res["AGA-A"] = dict(f=f10a, Re=Ra1, Ma=mach(Va1, k, b.Rg, Tm), V=Va1,
                         D=Da1, f_sci=True)
 
-    # ---------------- AGA-B (laco de convergencia em f) ----------------
+    # ---------------- AGA-B (convergence loop on f) ----------------
     exigir(eps > 0, "AGA-B requires absolute roughness > 0_mm")
     Db1, fb, err, it = Db, f2, 1.0, 0
     while err > TOL and it < MAXIT:
@@ -120,11 +121,11 @@ def formatar(r):
 
 
 if __name__ == "__main__":
-    # Exemplo: edite os valores abaixo e execute.
+    # Example: edit the values below and run.
     try:
-        r = gas_diameter(L9=185, Q9=2.5e6, eps=0.018, lam=0.56, mu=1.31e-5,
-                         k=1.299, P19=98, P29=45, Zm=0.91, Tm9=22, n=0.95,
-                         Ca=0.94, h=405)
+        r = gas_diameter(L9=100, Q9=3.0e6, eps=0.046, lam=0.6, mu=1.1e-5,
+                         k=1.3, P19=70, P29=40, Zm=0.9, Tm9=25, n=0.92,
+                         Ca=0.95, h=0)
         print(formatar(r))
     except GasPipelineError as e:
-        print("ERRO DE ENTRADA:", e)
+        print("INPUT ERROR:", e)
