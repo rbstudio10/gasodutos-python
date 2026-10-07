@@ -1,23 +1,23 @@
-# Gasodutos – cálculo de diâmetro, vazão e loop (Python)
+# Gas pipelines: diameter, flow rate and loop calculations (Python)
 
-Tradução para Python 3 dos programas HP Prime (HP PPL) `GasDiameter`, `GasFlowRate` e
-`GasPipeLoop`, de Antonio Ricardo Andrade Bozolla.
+Python 3 translation of the HP Prime (HP PPL) programs `GasDiameter`, `GasFlowRate` and
+`GasPipeLoop`, by Antonio Ricardo Andrade Bozolla.
 
-Base teórica: STUCKENBRUCK, S. *Escoamento em Dutos*, Volume B. PUC-Rio, 2014.
+Theoretical basis: STUCKENBRUCK, S. *Escoamento em Dutos*, Volume B. PUC-Rio, 2014.
 
-## Arquivos
+## Files
 
-| Arquivo | Função |
+| File | Purpose |
 |---|---|
-| `gasutil.py` | Constantes, validações, Colebrook, modelos empíricos e formatação |
-| `gas_diameter.py` | Diâmetro a partir da vazão padrão (Teórico, Weymouth, Panhandle A/B, IGT, Mueller, Fritzsche, AGA-A, AGA-B) |
-| `gas_flow_rate.py` | Vazão padrão a partir do diâmetro (mesmos modelos) |
-| `gas_pipe_loop.py` | Gasoduto com loop (trechos AB, B–C–E, B–D–E, EF) |
-| `test_consistencia.py` | Testes de consistência interna |
+| `gasutil.py` | Constants, input validation, Colebrook, empirical models and output formatting |
+| `gas_diameter.py` | Diameter from standard flow rate (Theoretical, Weymouth, Panhandle A/B, IGT, Mueller, Fritzsche, AGA-A, AGA-B) |
+| `gas_flow_rate.py` | Standard flow rate from diameter (same models) |
+| `gas_pipe_loop.py` | Pipeline with a loop (segments AB, B–C–E, B–D–E, EF) |
+| `test_consistencia.py` | Internal consistency tests |
 
-Somente biblioteca padrão (`math`). Todos os arquivos devem ficar na mesma pasta.
+Standard library only (`math`). All files must be kept in the same folder.
 
-## Uso
+## Usage
 
 ```python
 from gas_diameter import gas_diameter, formatar
@@ -26,22 +26,32 @@ r = gas_diameter(L9=100, Q9=3.0e6, eps=0.046, lam=0.6, mu=1.1e-5, k=1.3,
 print(formatar(r))
 ```
 
-Unidades iguais às do PPL: L em km; Q em Nm³/d; ε em mm; P em bar (absoluta);
-T em °C (`gas_diameter`, `gas_flow_rate`) ou K (`gas_pipe_loop`); D em m
-(`gas_flow_rate`) ou pol (`gas_pipe_loop`).
+Units are the same as in the PPL programs: length in km; flow rate in Nm³/d;
+roughness ε in mm; pressures in bar (absolute); temperature in °C
+(`gas_diameter`, `gas_flow_rate`) or K (`gas_pipe_loop`); diameter in m
+(`gas_flow_rate`) or inches (`gas_pipe_loop`).
 
-## Diagnósticos
+To run on Android, open the file you want in Pydroid 3, edit the example values at
+the bottom (inside the `if __name__ == "__main__":` block) and tap ▶.
 
-`estrito=True` (padrão) interrompe o cálculo com `GasPipelineError` nos avisos de
-rugosidade, Reynolds e diâmetro máximo (equivalente ao `BREAK` do PPL).
-`estrito=False` registra o aviso em `r["avisos"]` e segue.
+## Diagnostics
 
-## Testes
+With `estrito=True` (default), the calculation stops with a `GasPipelineError` on
+roughness, Reynolds number and maximum-diameter warnings (equivalent to `BREAK` in
+the PPL code). With `estrito=False`, the warning is stored in `r["avisos"]` and the
+calculation continues.
+
+## Tests
 
 ```
 python test_consistencia.py
 ```
 
-## Licença
+## License
 
-MIT. Veja o arquivo LICENSE.
+MIT. See the `LICENSE` file.
+
+## Disclaimer
+
+These are calculation-support tools. Results must be verified by a qualified
+engineer before any use in a design.
